@@ -1,0 +1,26 @@
+# dependencies
+**/node_modules/
+
+# build outputs
+/frontend/.next/
+/frontend/out/
+/backend/dist/
+/backend/build/
+
+# env files
+.env
+.env.*.local
+
+# editor + OS
+.vscode/
+.DS_Store
+logs/
+*.log
+
+# test/coverage
+coverage/
+*.tsbuildinfo
+
+/backend/.*
+/backend/src/public
+
