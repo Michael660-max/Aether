@@ -1,25 +1,34 @@
-import errorHandler from "errorhandler";
-import app from "./app";
+import express, { Request, Response, NextFunction } from "express";
+import cors from "cors";
+import mongoose from "mongoose";
+import pointsRouter from "./controllers/points";
+import dotenv from "dotenv";
 
+dotenv.config();
 
-/**
- * Error Handler. Provides full stack
- */
-if (process.env.NODE_ENV === "development") {
-    app.use(errorHandler());
+async function start() {
+    await mongoose.connect(process.env.MONGO_URI!, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true
+    });
+
+    const app = express();
+    app.use(cors({
+        origin: 'http://localhost:3000'
+    }));
+    app.use(express.json());
+    app.use("/api/points", pointsRouter);
+
+    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+        console.error(err);
+        res.status(500).json({ error: err.message || "Internal Server Error" });
+    });
+
+    app.listen(Number(process.env.PORT), () => console.log(`API listening on port ${process.env.PORT}`));
+
 }
 
-
-/**
- * Start Express server.
- */
-const server = app.listen(app.get("port"), () => {
-    console.log(
-        "  App is running at http://localhost:%d in %s mode",
-        app.get("port"),
-        app.get("env")
-    );
-    console.log("  Press CTRL-C to stop\n");
+start().catch((err) => {
+    console.error("Failed to start server:", err);
+    process.exit(1);
 });
-
-export default server;

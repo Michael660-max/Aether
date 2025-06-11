@@ -31,4 +31,4 @@ const PointSchema = new Schema<IPoint>(
     { timestamps: true }
 );
 
-export const Point = model<IPoint>('Point', PointSchema);
+export const Point = model<IPoint>("Point", PointSchema);

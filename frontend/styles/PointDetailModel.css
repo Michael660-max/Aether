@@ -1,0 +1,55 @@
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: start;
+  padding: 2rem;
+  overflow: auto;
+}
+.modal-content {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  position: relative;
+  max-width: 600px;
+  width: 100%;
+}
+.modal-close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background: transparent;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+.modal-title {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+}
+.modal-photo-block {
+  margin-bottom: 1rem;
+}
+.modal-photo {
+  width: 100%;
+  border-radius: 4px;
+}
+.modal-caption {
+  margin-top: 0.5rem;
+  color: #555;
+}
+.modal-tags {
+  margin-top: 1rem;
+}
+.modal-tag {
+  display: inline-block;
+  background: #eef;
+  color: #006;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  margin-right: 0.5rem;
+  font-size: 0.875rem;
+}
