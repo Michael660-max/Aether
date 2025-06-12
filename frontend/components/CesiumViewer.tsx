@@ -1,149 +1,223 @@
-import buildModuleUrl from "@cesium/engine/Source/Core/buildModuleUrl";
 import { useEffect, useRef, useState } from "react";
+import axios from "axios";
+import buildModuleUrl from "@cesium/engine/Source/Core/buildModuleUrl";
 import {
   Viewer,
   Ion,
   EllipsoidTerrainProvider,
   IonImageryProvider,
-  SkyBox,
-  Cartesian3,
-  NearFarScalar,
-  VerticalOrigin,
   ScreenSpaceEventHandler,
-  Cartesian2,
   ScreenSpaceEventType,
+  Cartesian2,
+  Cartesian3,
+  Cartographic,
+  Math as CesiumMath,
+  VerticalOrigin,
 } from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
-import usePointMarkers, { Point } from "../hooks/usePointMarkers";
-import PointDetailModel from "./PointDetailModel";
+
 import CreatePointModal from "./CreatePointModal";
+import PointDetailModel from "./PointDetailModel";
 
 buildModuleUrl.setBaseUrl(
   "https://cdn.jsdelivr.net/npm/cesium@latest/Build/Cesium/"
 );
 
+type Coords = { lat: number; long: number };
+
+type Photo = {
+  url: string;
+  caption?: string;
+};
+
+type Point = {
+  _id: string;
+  lat: number;
+  long: number;
+  descriptor?: string;
+  tags: string[];
+  photos: Photo[];
+};
+
+const API = process.env.NEXT_PUBLIC_API_URL!;
+
+function initViewer(container: HTMLDivElement): Viewer {
+  // Create globe
+  Ion.defaultAccessToken = process.env.NEXT_PUBLIC_CESIUM_ION_TOKEN!;
+  const terrainProvider = new EllipsoidTerrainProvider();
+  const viewer = new Viewer(container, {
+    terrainProvider,
+    animation: false,
+    timeline: false,
+    baseLayerPicker: false,
+    homeButton: false,
+    fullscreenButton: false,
+    sceneModePicker: false,
+    navigationHelpButton: false,
+    geocoder: true,
+    infoBox: false,
+    selectionIndicator: false,
+  });
+  viewer.scene.globe.enableLighting = false;
+
+  return viewer;
+}
+
+async function addImagery(cesiumViewer: Viewer) {
+  // Add imagery to globe
+  const bingLabels = await IonImageryProvider.fromAssetId(3);
+  if (!cesiumViewer.imageryLayers) return;
+  cesiumViewer.imageryLayers.addImageryProvider(bingLabels);
+}
+
+async function loadPoints(viewer: Viewer): Promise<Point[]> {
+  // Load existing points from DB
+  const res = await axios.get<Point[]>(`${API}/points`);
+  const points = res.data || [];
+  for (const pt of points) {
+    viewer.entities.add({
+      id: pt._id,
+      position: Cartesian3.fromDegrees(pt.long, pt.lat),
+      billboard: {
+        image: "/icons/location.png",
+        scale: 0.05,
+        verticalOrigin: VerticalOrigin.BOTTOM,
+      },
+    });
+  }
+  return points;
+}
+
+function attachClickHandler(
+  viewer: Viewer,
+  existingPoints: Point[],
+  onSelect: (pt: Point) => void,
+  onCreate: (coords: Coords) => void
+): ScreenSpaceEventHandler {
+  // Handle select/create point
+  const handler = new ScreenSpaceEventHandler(viewer.scene.canvas);
+  handler.setInputAction((evt: { position: Cartesian2 }) => {
+    const pick = viewer.scene.pick(evt.position);
+    if (pick?.id) {
+      const pt = existingPoints.find((p) => p._id === pick.id.id);
+      if (pt) onSelect(pt);
+    } else {
+      const cart = viewer.camera.pickEllipsoid(
+        evt.position,
+        viewer.scene.globe.ellipsoid
+      );
+      if (cart) {
+        const c = Cartographic.fromCartesian(cart);
+        onCreate({
+          lat: CesiumMath.toDegrees(c.latitude),
+          long: CesiumMath.toDegrees(c.longitude),
+        });
+      }
+    }
+  }, ScreenSpaceEventType.LEFT_CLICK);
+  return handler;
+}
+
 export default function CesiumViewer() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [viewer, setViewer] = useState<Viewer>();
+  const [points, setPoints] = useState<Point[]>([]);
   const [selectedPoint, setSelectedPoint] = useState<Point | null>(null);
-  const [newCoords, setNewCoords] = useState<{
-    lat: number;
-    long: number;
-  } | null>(null);
-  const API = process.env.NEXT_PUBLIC_API_URL;
-
-  // usePointMarkers({
-  //   viewer: viewer ?? undefined,
-  //   onSelect: setSelectedPoint,
-  //   onCreate: setNewCoords,
-  // });
+  const [newCoords, setNewCoords] = useState<Coords | null>(null);
 
   useEffect(() => {
-    let cesiumViewer: Viewer;
-    let clickHandler: ScreenSpaceEventHandler;
+    if (!containerRef.current) return;
 
-    // Setup viewer
+    let viewerInstance: Viewer;
+    let handler: ScreenSpaceEventHandler;
+
     (async () => {
-      Ion.defaultAccessToken = process.env.NEXT_PUBLIC_CESIUM_ION_TOKEN!;
+      viewerInstance = initViewer(containerRef.current!);
+      setViewer(viewerInstance);
 
-      const terrainProvider = new EllipsoidTerrainProvider();
-      const bingLabels = await IonImageryProvider.fromAssetId(3);
+      try {
+        await addImagery(viewerInstance);
+        const pts = await loadPoints(viewerInstance);
+        setPoints(pts);
 
-      cesiumViewer = new Viewer(containerRef.current!, {
-        terrainProvider,
-        animation: false,
-        timeline: false,
-        baseLayerPicker: false,
-        geocoder: false,
-        homeButton: false,
-        sceneModePicker: false,
-        navigationHelpButton: false,
-        fullscreenButton: false,
-        infoBox: false,
-        selectionIndicator: false,
-        navigationInstructionsInitiallyVisible: false,
-      });
-
-      console.log("[CesiumViewer] created Viewer", cesiumViewer);
-      setViewer(cesiumViewer);
-
-      // Add imagery + name of the globe
-      cesiumViewer.imageryLayers.removeAll();
-      cesiumViewer.imageryLayers.addImageryProvider(bingLabels);
-
-      // Add background space image
-      cesiumViewer.scene.skyBox = new SkyBox({
-        sources: {
-          positiveX: buildModuleUrl(
-            "Assets/Textures/SkyBox/tycho2t3_80_px.jpg"
-          ),
-          negativeX: buildModuleUrl(
-            "Assets/Textures/SkyBox/tycho2t3_80_mx.jpg"
-          ),
-          positiveY: buildModuleUrl(
-            "Assets/Textures/SkyBox/tycho2t3_80_py.jpg"
-          ),
-          negativeY: buildModuleUrl(
-            "Assets/Textures/SkyBox/tycho2t3_80_my.jpg"
-          ),
-          positiveZ: buildModuleUrl(
-            "Assets/Textures/SkyBox/tycho2t3_80_pz.jpg"
-          ),
-          negativeZ: buildModuleUrl(
-            "Assets/Textures/SkyBox/tycho2t3_80_mz.jpg"
-          ),
-        },
-      });
-
-      console.log("🔧 Attaching click handler to Cesium canvas");
-      clickHandler = new ScreenSpaceEventHandler(cesiumViewer.scene.canvas);
-      clickHandler.setInputAction((evt: { position: Cartesian2 }) => {
-        console.log("🌍 Cesium click at", evt.position);
-        // here you’d branch into onSelect() vs onCreate()
-      }, ScreenSpaceEventType.LEFT_CLICK);
+        handler = attachClickHandler(
+          viewerInstance,
+          pts,
+          setSelectedPoint,
+          setNewCoords
+        );
+      } catch (err) {
+        console.log("error: " + err);
+      }
     })();
 
     return () => {
-      if (cesiumViewer && !cesiumViewer.isDestroyed()) cesiumViewer.destroy();
+      handler?.destroy();
+      if (viewerInstance && !viewerInstance.isDestroyed()) {
+        viewerInstance.destroy();
+      }
     };
   }, []);
 
+  useEffect(() => {
+    if (!viewer) return;
+
+    const handler = new ScreenSpaceEventHandler(viewer.scene.canvas);
+    handler.setInputAction((evt: { position: Cartesian2 }) => {
+      const pick = viewer.scene.pick(evt.position);
+      if (pick?.id) {
+        // Local array points instead of querying inital points
+        const pt = points.find((p) => p._id === pick.id.id);
+        if (pt) setSelectedPoint(pt);
+      } else {
+        const cart = viewer.camera.pickEllipsoid(
+          evt.position,
+          viewer.scene.globe.ellipsoid
+        );
+        if (cart) {
+          const c = Cartographic.fromCartesian(cart);
+          setNewCoords({
+            lat: CesiumMath.toDegrees(c.latitude),
+            long: CesiumMath.toDegrees(c.longitude),
+          });
+        }
+      }
+    }, ScreenSpaceEventType.LEFT_CLICK);
+  }, [viewer, points]);
+
   return (
     <>
-      <div
-        ref={containerRef}
-        style={{
-          width: "100%",
-          height: "100vh",
-          margin: 0,
-          padding: 0,
-          border: 0,
-        }}
-      />
+      <div ref={containerRef} style={{ width: "100%", height: "100vh" }} />
+
       {newCoords && (
         <CreatePointModal
-          coords={newCoords!}
-          onSubmit={(data) => {
-            axios.post(`${API}/points`, data).then(() => {
-              setNewCoords(null);
-              viewer?.entities.add({
-                position: Cartesian3.fromDegrees(data.long, data.lat),
-                billboard: {
-                  image: "yellow_glow.png",
-                  scaleByDistance: new NearFarScalar(2e6, 1.0, 6e6, 0.5),
-                  verticalOrigin: VerticalOrigin.BOTTOM,
-                },
-              });
+          coords={newCoords}
+          onSubmit={async (data) => {
+            const { data: newPt } = await axios.post<Point>(
+              `${API}/points`,
+              data
+            );
+            viewer?.entities.add({
+              id: newPt._id,
+              position: Cartesian3.fromDegrees(newPt.long, newPt.lat),
+              billboard: {
+                image: "/icons/location.png",
+                scale: 0.05,
+                verticalOrigin: VerticalOrigin.BOTTOM,
+              },
             });
+            setPoints((ps) => [...ps, newPt]);
+            setNewCoords(null);
           }}
           onCancel={() => setNewCoords(null)}
-        ></CreatePointModal>
+        />
       )}
+
       {selectedPoint && (
         <PointDetailModel
-          point={selectedPoint!}
+          point={selectedPoint}
           onClose={() => setSelectedPoint(null)}
-        ></PointDetailModel>
+        />
       )}
     </>
   );

@@ -8,11 +8,9 @@ export interface Photo {
 export interface IPoint extends Document {
     lat: number;
     long: number;
-    photos: Photo[];
-    tags: string[];
     descriptor?: string;
-    createdAt: Date;
-    updatedAt: Date;
+    tags: string[];
+    photos: Photo[];
 }
 
 const PhotoSchema = new Schema({
@@ -24,9 +22,10 @@ const PointSchema = new Schema<IPoint>(
     {
         lat: { type: Number, required: true },
         long: { type: Number, required: true },
-        photos: { type: [PhotoSchema], default: [] },
-        tags: { type: [String], default: [] },
         descriptor: { type: String },
+        tags: { type: [String], default: [] },
+        photos: { type: [PhotoSchema], default: [] },
+
     },
     { timestamps: true }
 );

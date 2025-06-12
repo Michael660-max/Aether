@@ -1,12 +1,17 @@
 import React, { useState } from "react";
 import "../styles/CreatePointModal.css";
 
+export interface Photo {
+  url: string;
+  caption?: string;
+}
+
 export interface CreatePointData {
   lat: number;
   long: number;
-  descriptor: string;
-  tags: string;
-  photoUrl: string;
+  descriptor?: string;
+  tags: string[];
+  photos: Photo[];
 }
 
 interface Props {
@@ -23,9 +28,32 @@ export default function CreatePointModal({
   const [descriptor, setDescriptor] = useState("");
   const [tags, setTags] = useState("");
   const [photoUrl, setPhotoUrl] = useState("");
-  
-  console.log('CreatePointModal render, coords=', coords);
+  const [caption, setCaption] = useState("");
+
   if (!coords) return null;
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      console.error("Could not load file");
+      return;
+    }
+
+    const url = URL.createObjectURL(file);
+    try {
+      new URL(url);
+      setPhotoUrl(url);
+    } catch {
+      alert("Invalid Image URL");
+    }
+  };
+
+  const handleTags = (s: string) => {
+    return s
+      .split(",")
+      .map((t) => t.trim())
+      .filter((t) => t.length);
+  };
 
   return (
     <div className="modal-backdrop" onClick={onCancel}>
@@ -46,12 +74,16 @@ export default function CreatePointModal({
           value={tags}
           onChange={(e) => setTags(e.target.value)}
         />
-        <label>Photo URL</label>
+        <label>Photo Caption</label>
         <input
           type="text"
-          value={photoUrl}
-          onChange={(e) => setPhotoUrl(e.target.value)}
+          value={caption}
+          onChange={(e) => setCaption(e.target.value)}
         />
+
+        <label>Photo URL</label>
+        <input type="file" accept="image/*" onChange={handleFileChange} />
+        {photoUrl && <img src={photoUrl} className="modal-photo" />}
         <div className="modal-buttons">
           <button
             onClick={() =>
@@ -59,8 +91,8 @@ export default function CreatePointModal({
                 lat: coords.lat,
                 long: coords.long,
                 descriptor,
-                tags,
-                photoUrl,
+                tags: handleTags(tags),
+                photos: [{ url: photoUrl, caption }],
               })
             }
           >

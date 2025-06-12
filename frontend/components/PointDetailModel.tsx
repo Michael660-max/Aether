@@ -1,5 +1,5 @@
 import React from "react";
-import { Point } from "../hooks/usePointMarkers";
+import { CreatePointData as Point } from "../components/CreatePointModal";
 import "../styles/PointDetailModel.css";
 
 type Props = {
@@ -9,6 +9,7 @@ type Props = {
 
 export default function PointDetailModel({ point, onClose }: Props) {
   if (!point) return null;
+  console.log(point);
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
