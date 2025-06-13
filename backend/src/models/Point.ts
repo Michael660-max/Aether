@@ -6,6 +6,7 @@ export interface Photo {
 }
 
 export interface IPoint extends Document {
+    _id: string;
     lat: number;
     long: number;
     descriptor?: string;
@@ -20,6 +21,7 @@ const PhotoSchema = new Schema({
 
 const PointSchema = new Schema<IPoint>(
     {
+        _id: { type: String, require: true },
         lat: { type: Number, required: true },
         long: { type: Number, required: true },
         descriptor: { type: String },

@@ -15,6 +15,7 @@ import {
   VerticalOrigin,
 } from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
+import { makeGlowSprite } from "../utils/glowSprite";
 
 import CreatePointModal from "./CreatePointModal";
 import PointDetailModel from "./PointDetailModel";
@@ -40,6 +41,7 @@ type Point = {
 };
 
 const API = process.env.NEXT_PUBLIC_API_URL!;
+const glowSprite = makeGlowSprite(256);
 
 function initViewer(container: HTMLDivElement): Viewer {
   // Create globe
@@ -79,8 +81,8 @@ async function loadPoints(viewer: Viewer): Promise<Point[]> {
       id: pt._id,
       position: Cartesian3.fromDegrees(pt.long, pt.lat),
       billboard: {
-        image: "/icons/location.png",
-        scale: 0.05,
+        image: glowSprite,
+        scale: 0.1,
         verticalOrigin: VerticalOrigin.BOTTOM,
       },
     });
@@ -201,8 +203,8 @@ export default function CesiumViewer() {
               id: newPt._id,
               position: Cartesian3.fromDegrees(newPt.long, newPt.lat),
               billboard: {
-                image: "/icons/location.png",
-                scale: 0.05,
+                image: glowSprite,
+                scale: 0.1,
                 verticalOrigin: VerticalOrigin.BOTTOM,
               },
             });
@@ -215,6 +217,8 @@ export default function CesiumViewer() {
 
       {selectedPoint && (
         <PointDetailModel
+          setPoints={setPoints}
+          viewer={viewer!}
           point={selectedPoint}
           onClose={() => setSelectedPoint(null)}
         />

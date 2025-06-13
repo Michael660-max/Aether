@@ -7,6 +7,7 @@ export interface Photo {
 }
 
 export interface CreatePointData {
+  _id: string;
   lat: number;
   long: number;
   descriptor?: string;
@@ -93,6 +94,7 @@ export default function CreatePointModal({
                 descriptor,
                 tags: handleTags(tags),
                 photos: [{ url: photoUrl, caption }],
+                _id: ""
               })
             }
           >
