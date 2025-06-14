@@ -7,7 +7,7 @@ const router = Router();
 router.post("/", async (req, res, next) => {
     try {
         const point = await Point.create(req.body);
-        res.status(201).json(point);
+        res.status(201).json(point.toJSON());
     } catch (err) {
         next(err);
     }

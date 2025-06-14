@@ -21,7 +21,7 @@ const onDelete = async (
   try {
     onClose();
     viewer?.entities.removeById(pointId);
-    setPoints((prev) => prev.filter((p) => p._id !== pointId));
+    setPoints((prev) => prev.filter((p) => p.id !== pointId));
     await axios.delete(`${API}/points/${pointId}`);
   } catch {
     console.error("Delete point failed");
@@ -41,7 +41,7 @@ export default function PointDetailModel({
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <button
           className="modal-close"
-          onClick={() => onDelete(setPoints, viewer, point._id, onClose)}
+          onClick={() => onDelete(setPoints, viewer, point.id, onClose)}
         >
           ✕
         </button>

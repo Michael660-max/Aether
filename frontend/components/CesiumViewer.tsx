@@ -32,7 +32,7 @@ type Photo = {
 };
 
 type Point = {
-  _id: string;
+  id: string;
   lat: number;
   long: number;
   descriptor?: string;
@@ -61,6 +61,7 @@ function initViewer(container: HTMLDivElement): Viewer {
     selectionIndicator: false,
   });
   viewer.scene.globe.enableLighting = false;
+  viewer.scene.screenSpaceCameraController.maximumZoomDistance = 7.0e7;
 
   return viewer;
 }
@@ -68,6 +69,11 @@ function initViewer(container: HTMLDivElement): Viewer {
 async function addImagery(cesiumViewer: Viewer) {
   // Add imagery to globe
   const bingLabels = await IonImageryProvider.fromAssetId(3);
+  // const osmLayer = new UrlTemplateImageryProvider({
+  //   url: "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
+  //   credit: "© OpenStreetMap contributors",
+  // });
+
   if (!cesiumViewer.imageryLayers) return;
   cesiumViewer.imageryLayers.addImageryProvider(bingLabels);
 }
@@ -78,7 +84,7 @@ async function loadPoints(viewer: Viewer): Promise<Point[]> {
   const points = res.data || [];
   for (const pt of points) {
     viewer.entities.add({
-      id: pt._id,
+      id: pt.id,
       position: Cartesian3.fromDegrees(pt.long, pt.lat),
       billboard: {
         image: glowSprite,
@@ -101,7 +107,7 @@ function attachClickHandler(
   handler.setInputAction((evt: { position: Cartesian2 }) => {
     const pick = viewer.scene.pick(evt.position);
     if (pick?.id) {
-      const pt = existingPoints.find((p) => p._id === pick.id.id);
+      const pt = existingPoints.find((p) => p.id === pick.id.id);
       if (pt) onSelect(pt);
     } else {
       const cart = viewer.camera.pickEllipsoid(
@@ -169,7 +175,7 @@ export default function CesiumViewer() {
       const pick = viewer.scene.pick(evt.position);
       if (pick?.id) {
         // Local array points instead of querying inital points
-        const pt = points.find((p) => p._id === pick.id.id);
+        const pt = points.find((p) => p.id === pick.id.id);
         if (pt) setSelectedPoint(pt);
       } else {
         const cart = viewer.camera.pickEllipsoid(
@@ -200,7 +206,7 @@ export default function CesiumViewer() {
               data
             );
             viewer?.entities.add({
-              id: newPt._id,
+              id: newPt.id,
               position: Cartesian3.fromDegrees(newPt.long, newPt.lat),
               billboard: {
                 image: glowSprite,
