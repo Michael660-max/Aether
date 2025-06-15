@@ -24,14 +24,14 @@ buildModuleUrl.setBaseUrl(
   "https://cdn.jsdelivr.net/npm/cesium@latest/Build/Cesium/"
 );
 
-type Coords = { lat: number; long: number };
+export type Coords = { lat: number; long: number };
 
-type Photo = {
+export type Photo = {
   url: string;
   caption?: string;
 };
 
-type Point = {
+export type Point = {
   id: string;
   lat: number;
   long: number;
@@ -40,7 +40,7 @@ type Point = {
   photos: Photo[];
 };
 
-const API = process.env.NEXT_PUBLIC_API_URL!;
+export const API = process.env.NEXT_PUBLIC_API_URL!;
 const glowSprite = makeGlowSprite(256);
 
 function initViewer(container: HTMLDivElement): Viewer {
@@ -199,24 +199,11 @@ export default function CesiumViewer() {
 
       {newCoords && (
         <CreatePointModal
+          setPoints={setPoints}
           coords={newCoords}
-          onSubmit={async (data) => {
-            const { data: newPt } = await axios.post<Point>(
-              `${API}/points`,
-              data
-            );
-            viewer?.entities.add({
-              id: newPt.id,
-              position: Cartesian3.fromDegrees(newPt.long, newPt.lat),
-              billboard: {
-                image: glowSprite,
-                scale: 0.1,
-                verticalOrigin: VerticalOrigin.BOTTOM,
-              },
-            });
-            setPoints((ps) => [...ps, newPt]);
-            setNewCoords(null);
-          }}
+          viewer={viewer!}
+          setNewCoords={setNewCoords}
+          onSubmit={() => null}
           onCancel={() => setNewCoords(null)}
         />
       )}

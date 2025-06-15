@@ -2,6 +2,7 @@ import React from "react";
 import { CreatePointData as Point } from "../components/CreatePointModal";
 import "../styles/PointDetailModel.css";
 import { Viewer } from "cesium";
+import axios from "axios";
 
 type Props = {
   setPoints: React.Dispatch<React.SetStateAction<Point[]>>;
@@ -23,8 +24,8 @@ const onDelete = async (
     viewer?.entities.removeById(pointId);
     setPoints((prev) => prev.filter((p) => p.id !== pointId));
     await axios.delete(`${API}/points/${pointId}`);
-  } catch {
-    console.error("Delete point failed");
+  } catch (err) {
+    console.error("Delete point failed:", err);
   }
 };
 

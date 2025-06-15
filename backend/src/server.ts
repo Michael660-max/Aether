@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import mongoose from "mongoose";
 import pointsRouter from "./controllers/points";
+import s3Router from "./controllers/s3";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -17,6 +18,9 @@ async function start() {
         origin: 'http://localhost:3000'
     }));
     app.use(express.json());
+
+    // Routes
+    app.use("/api/s3", s3Router)
     app.use("/api/points", pointsRouter);
 
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

@@ -1,5 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, Dispatch, SetStateAction } from "react";
 import "../styles/CreatePointModal.css";
+import { useS3Upload as handleUpload } from "../hooks/useS3Upload";
+import { Coords, API, Point } from "./CesiumViewer";
+import { Cartesian3, VerticalOrigin, Viewer } from "cesium";
+import { makeGlowSprite } from "../utils/glowSprite";
+import axios from "axios";
+
+const glowSprite = makeGlowSprite(256);
 
 export interface Photo {
   url: string;
@@ -24,34 +31,35 @@ export interface PointData {
 }
 
 interface Props {
+  setPoints: Dispatch<SetStateAction<Point[]>>;
   coords: { lat: number; long: number };
+  viewer: Viewer;
   onSubmit(data: PointData): void;
+  setNewCoords: React.Dispatch<React.SetStateAction<Coords | null>>;
   onCancel(): void;
 }
 
 export default function CreatePointModal({
+  setPoints,
   coords,
-  onSubmit,
+  viewer,
+  setNewCoords,
   onCancel,
 }: Props) {
   const [descriptor, setDescriptor] = useState("");
   const [tags, setTags] = useState("");
-  const [photoUrl, setPhotoUrl] = useState("");
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [caption, setCaption] = useState("");
 
   if (!coords) return null;
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) {
-      console.error("Could not load file");
-      return;
-    }
+    if (!file) return;
 
-    const url = URL.createObjectURL(file);
     try {
-      new URL(url);
-      setPhotoUrl(url);
+      const publicUrl = await handleUpload(file);
+      setPhotoUrl(publicUrl);
     } catch {
       alert("Invalid Image URL");
     }
@@ -62,6 +70,24 @@ export default function CreatePointModal({
       .split(",")
       .map((t) => t.trim())
       .filter((t) => t.length);
+  };
+
+  const handleSubmit = async (data: PointData) => {
+    const { data: newPt } = await axios.post<CreatePointData>(
+      `${API}/points`,
+      data
+    );
+    viewer?.entities.add({
+      id: newPt.id,
+      position: Cartesian3.fromDegrees(newPt.long, newPt.lat),
+      billboard: {
+        image: glowSprite,
+        scale: 0.1,
+        verticalOrigin: VerticalOrigin.BOTTOM,
+      },
+    });
+    setPoints((ps) => [...ps, newPt]);
+    setNewCoords(null);
   };
 
   return (
@@ -96,12 +122,12 @@ export default function CreatePointModal({
         <div className="modal-buttons">
           <button
             onClick={() =>
-              onSubmit({
+              handleSubmit({
                 lat: coords.lat,
                 long: coords.long,
                 descriptor,
                 tags: handleTags(tags),
-                photos: [{ url: photoUrl, caption }],
+                photos: [{ url: photoUrl!, caption }],
               })
             }
           >
