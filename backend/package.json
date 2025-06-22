@@ -28,6 +28,8 @@
     "dev": "ts-node src/server.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.828.0",
+    "@aws-sdk/s3-request-presigner": "^3.828.0",
     "async": "3.2.2",
     "axios": "^1.9.0",
     "bcrypt-nodejs": "0.0.3",
@@ -51,6 +53,7 @@
     "passport-facebook": "3.0.0",
     "passport-local": "1.0.0",
     "pug": "3.0.2",
+    "uuid": "^11.1.0",
     "winston": "3.3.3"
   },
   "devDependencies": {

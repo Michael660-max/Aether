@@ -15,6 +15,7 @@ import {
   VerticalOrigin,
 } from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
+import { makeGlowSprite } from "../utils/glowSprite";
 
 import CreatePointModal from "./CreatePointModal";
 import PointDetailModel from "./PointDetailModel";
@@ -23,15 +24,15 @@ buildModuleUrl.setBaseUrl(
   "https://cdn.jsdelivr.net/npm/cesium@latest/Build/Cesium/"
 );
 
-type Coords = { lat: number; long: number };
+export type Coords = { lat: number; long: number };
 
-type Photo = {
+export type Photo = {
   url: string;
   caption?: string;
 };
 
-type Point = {
-  _id: string;
+export type Point = {
+  id: string;
   lat: number;
   long: number;
   descriptor?: string;
@@ -39,7 +40,8 @@ type Point = {
   photos: Photo[];
 };
 
-const API = process.env.NEXT_PUBLIC_API_URL!;
+export const API = process.env.NEXT_PUBLIC_API_URL!;
+const glowSprite = makeGlowSprite(256);
 
 function initViewer(container: HTMLDivElement): Viewer {
   // Create globe
@@ -59,6 +61,7 @@ function initViewer(container: HTMLDivElement): Viewer {
     selectionIndicator: false,
   });
   viewer.scene.globe.enableLighting = false;
+  viewer.scene.screenSpaceCameraController.maximumZoomDistance = 7.0e7;
 
   return viewer;
 }
@@ -66,6 +69,11 @@ function initViewer(container: HTMLDivElement): Viewer {
 async function addImagery(cesiumViewer: Viewer) {
   // Add imagery to globe
   const bingLabels = await IonImageryProvider.fromAssetId(3);
+  // const osmLayer = new UrlTemplateImageryProvider({
+  //   url: "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
+  //   credit: "© OpenStreetMap contributors",
+  // });
+
   if (!cesiumViewer.imageryLayers) return;
   cesiumViewer.imageryLayers.addImageryProvider(bingLabels);
 }
@@ -76,11 +84,11 @@ async function loadPoints(viewer: Viewer): Promise<Point[]> {
   const points = res.data || [];
   for (const pt of points) {
     viewer.entities.add({
-      id: pt._id,
+      id: pt.id,
       position: Cartesian3.fromDegrees(pt.long, pt.lat),
       billboard: {
-        image: "/icons/location.png",
-        scale: 0.05,
+        image: glowSprite,
+        scale: 0.1,
         verticalOrigin: VerticalOrigin.BOTTOM,
       },
     });
@@ -99,7 +107,7 @@ function attachClickHandler(
   handler.setInputAction((evt: { position: Cartesian2 }) => {
     const pick = viewer.scene.pick(evt.position);
     if (pick?.id) {
-      const pt = existingPoints.find((p) => p._id === pick.id.id);
+      const pt = existingPoints.find((p) => p.id === pick.id.id);
       if (pt) onSelect(pt);
     } else {
       const cart = viewer.camera.pickEllipsoid(
@@ -167,7 +175,7 @@ export default function CesiumViewer() {
       const pick = viewer.scene.pick(evt.position);
       if (pick?.id) {
         // Local array points instead of querying inital points
-        const pt = points.find((p) => p._id === pick.id.id);
+        const pt = points.find((p) => p.id === pick.id.id);
         if (pt) setSelectedPoint(pt);
       } else {
         const cart = viewer.camera.pickEllipsoid(
@@ -191,30 +199,19 @@ export default function CesiumViewer() {
 
       {newCoords && (
         <CreatePointModal
+          setPoints={setPoints}
           coords={newCoords}
-          onSubmit={async (data) => {
-            const { data: newPt } = await axios.post<Point>(
-              `${API}/points`,
-              data
-            );
-            viewer?.entities.add({
-              id: newPt._id,
-              position: Cartesian3.fromDegrees(newPt.long, newPt.lat),
-              billboard: {
-                image: "/icons/location.png",
-                scale: 0.05,
-                verticalOrigin: VerticalOrigin.BOTTOM,
-              },
-            });
-            setPoints((ps) => [...ps, newPt]);
-            setNewCoords(null);
-          }}
+          viewer={viewer!}
+          setNewCoords={setNewCoords}
+          onSubmit={() => null}
           onCancel={() => setNewCoords(null)}
         />
       )}
 
       {selectedPoint && (
         <PointDetailModel
+          setPoints={setPoints}
+          viewer={viewer!}
           point={selectedPoint}
           onClose={() => setSelectedPoint(null)}
         />

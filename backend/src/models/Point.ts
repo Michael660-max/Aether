@@ -6,6 +6,7 @@ export interface Photo {
 }
 
 export interface IPoint extends Document {
+    _id: Types.ObjectId;
     lat: number;
     long: number;
     descriptor?: string;
@@ -14,7 +15,7 @@ export interface IPoint extends Document {
 }
 
 const PhotoSchema = new Schema({
-    url: { type: String, required: true },
+    url: String,
     caption: String,
 });
 
@@ -29,5 +30,17 @@ const PointSchema = new Schema<IPoint>(
     },
     { timestamps: true }
 );
+
+PointSchema.virtual('id').get(function (this: IPoint) {
+    return this._id ? this._id.toHexString() : undefined;
+})
+
+PointSchema.set('toJSON', {
+    virtuals: true,
+    versionKey: false,
+    transform: (_doc: any, ret: { _id: any; }) => {
+        delete ret._id;
+    },
+});
 
 export const Point = model<IPoint>("Point", PointSchema);

@@ -24,3 +24,6 @@ coverage/
 /backend/.*
 /backend/src/public
 
+*.env.json
+*.local.json
+data.json
